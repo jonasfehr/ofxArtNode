@@ -1,0 +1,3 @@
+[submodule "libs/ArtNode"]
+	path = libs/ArtNode
+	url = https://github.com/tobiasebsen/ArtNode
