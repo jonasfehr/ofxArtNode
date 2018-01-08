@@ -44,7 +44,7 @@ int ofxArtNode::getNumNodes() {
 }
 
 ArtPollReply * ofxArtNode::getNode(int index) {
-	if (index > 0 && index < nodes.size()) {
+	if (index < nodes.size()) {
 		auto it = nodes.begin();
 		advance(it, index);
 		return &it->second;
@@ -53,12 +53,16 @@ ArtPollReply * ofxArtNode::getNode(int index) {
 }
 
 string ofxArtNode::getNodeIp(int index) {
-	if (index > 0 && index < nodes.size()) {
+	if (index < nodes.size()) {
 		auto it = nodes.begin();
 		advance(it, index);
 		return it->first;
 	}
 	return string();
+}
+
+void ofxArtNode::clearNodes(){
+    nodes.clear();
 }
 
 void ofxArtNode::sendPoll() {
@@ -74,6 +78,29 @@ void ofxArtNode::sendDmx(ArtDmx * dmx) {
 void ofxArtNode::sendSync() {
 	createSync();
 	sendMultiCast();
+}
+
+void ofxArtNode::setNodeAddress(int index, int universe,string shortName, string longName){
+
+    ArtAddress *addr = (ArtAddress*)buffer;
+    memset(buffer, 0, sizeof(ArtAddress));
+    setPacketHeader();
+    addr->OpCode = OpAddress;
+    addr->ProtVerHi = 0;
+    addr->ProtVerLo = ProtocolVersion;
+    addr->NetSwitch = ((universe & 0xF00) >> 8) | 0x80;
+    addr->SubSwitch = ((universe & 0xF0) >> 4) | 0x80;
+    for (int i=0; i<4; i++) {
+        addr->SwIn[i] = 0x7F;
+        addr->SwOut[i]  = ((universe & 0xF)+i) | 0x80;
+    }
+    addr->Command = 0;
+    //addr->ShortName = (unsigned char*) shortName.c_str();
+    strcpy((char*)addr->ShortName, (char*) shortName.c_str());
+    strcpy((char*)addr->LongName, (char*) longName.c_str());
+
+    packetSize = sizeof(ArtAddress);
+    sendUniCast(index);
 }
 
 ofxArtDmx * ofxArtNode::createArtDmx(int net, int sub, int universe) {
@@ -111,6 +138,21 @@ bool ofxArtNode::sendUniCast(int net, int subnet, int universe) {
 	return sendUniCast(net, subnet, universe, (char*)getBufferData(), getPacketSize());
 }
 
+bool ofxArtNode::sendUniCast(int index) {
+
+    if (index < nodes.size()) {
+        auto it = nodes.begin();
+        advance(it, index);
+
+        string addr = it->first;
+        ArtPollReply & reply = it->second;
+        udp.Connect(addr.c_str(), reply.BoxAddr.Port != 0 ? reply.BoxAddr.Port : config->udpPort);
+        udp.SendAll((char*)getBufferData(), getPacketSize());
+        return true;
+    }
+    return false;
+}
+
 bool ofxArtNode::readyFps(float frameRate) {
 	uint64_t now = ofGetElapsedTimeMillis();
 	if (now - lastFrameTime >= 1000 / frameRate) {
@@ -126,6 +168,6 @@ void ofxArtNode::doneFps() {
 
 string ofxArtNode::getBroadcastIp() {
 	in_addr bc;
-	bc.S_un.S_addr = broadcastIP();
+	bc.s_addr = broadcastIP();
 	return inet_ntoa(bc);
 }

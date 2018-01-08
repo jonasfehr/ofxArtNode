@@ -21,6 +21,16 @@ void ofApp::draw(){
 		dmx->Data[0] = 255;
 		node.sendDmx(dmx);
 	}
+    
+    if(node.getNumNodes() > 0){
+        string info;
+        info += "NumberOfNodes: " + ofToString(node.getNumNodes());
+        info += "\nIP           : " + node.getNodeIp(0);
+        //        info += "\nSortName     : " + ofToString(artNode.getNode(0)->ShortName);
+        //        info += "\nStartChannel : " + ofToString(artNode.getNode(0)->LongName);
+        //        info += "\nStartAddress :" + ofToString(artNode.getNode(0)->getPortAddress(0));
+        ofDrawBitmapStringHighlight(info, 315, ofGetHeight()-4*15);
+    }
 }
 
 //--------------------------------------------------------------
